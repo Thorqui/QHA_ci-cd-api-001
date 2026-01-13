@@ -1,0 +1,60 @@
+name: Despliegue a Elastic Beanstalk
+
+on:
+  push:
+    branches:
+      - main   # Se ejecuta automáticamente al hacer push a la rama main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Descargar el código del repositorio
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      # 2. Configurar Java 17 (Amazon Corretto para AWS)
+      - name: Configurar Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'corretto'
+          java-version: '17'
+          cache: 'maven'
+
+      # 3. Compilar el proyecto y generar el JAR (saltando tests para agilizar el despliegue)
+      - name: Compilar proyecto con Maven
+        run: ./mvnw clean package -DskipTests
+
+      # 4. Configurar credenciales de AWS (Usa los Secrets de GitHub)
+      - name: Configurar credenciales de AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      # 5. Preparar el paquete ZIP para Elastic Beanstalk
+      # Copia el JAR generado y el Procfile a una carpeta temporal y los comprime
+      - name: Preparar artefacto para Elastic Beanstalk
+        run: |
+          mkdir deploy
+          cp target/*.jar deploy/app.jar
+          cp Procfile deploy/Procfile
+          cd deploy
+          zip -r ../deploy.zip .
+
+      # 6. Subir nueva versión y desplegar en el entorno de AWS
+      - name: Desplegar en Elastic Beanstalk
+        uses: einaregilsson/beanstalk-deploy@v22
+        with:
+          aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          session_token: ${{ secrets.AWS_SESSION_TOKEN }}
+          application_name: dam-ci-cd-api-001
+          environment_name: Dam-ci-cd-api-001-env
+          region: us-east-1
+          version_label: "v-${{ github.run_id }}"
+          deployment_package: deploy.zip
+          wait_for_environment_recovery: true

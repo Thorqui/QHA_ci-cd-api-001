@@ -12,3 +12,7 @@ target/
 
 # macOS
 .DS_Store
+
+# Artefactos locales de despliegue
+/deploy/
+/deploy.zip
