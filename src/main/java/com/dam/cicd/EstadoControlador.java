@@ -13,7 +13,7 @@ public class EstadoControlador {
         return Map.of(
                 "estado", "OK",
                 "servicio", "dam-ci-cd-api-001",
-                "mensaje", "API operativa"
+                "mensaje", "Prueba de despligue automatico: actualización de mensaje"
         );
     }
 }
